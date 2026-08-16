@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>陛下和 Tiger 桌宠</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="stage" id="stage">
+      <div class="desktop-prop desktop-prop--desk"></div>
+      <div class="desktop-prop desktop-prop--food"></div>
+      <div class="desktop-prop desktop-prop--door"></div>
+      <div class="desktop-prop desktop-prop--laptop"></div>
+      <div class="pet pet--bixia" id="pet-bixia" aria-label="陛下">
+        <div class="pet-sprite"></div>
+        <div class="pet-tail"></div>
+        <div class="pet-badge">陛下</div>
+        <div class="pet-bubble"></div>
+      </div>
+      <div class="pet pet--tiger" id="pet-tiger" aria-label="Tiger">
+        <div class="pet-sprite"></div>
+        <div class="pet-tail"></div>
+        <div class="pet-badge">Tiger</div>
+        <div class="pet-bubble"></div>
+      </div>
+      <div class="stage-hint" id="stage-hint">拖一拖，点一下按钮，看看两只猫会怎么演。</div>
+    </section>
+
+    <aside class="panel">
+      <header class="panel-header">
+        <h1>陛下 / Tiger 档案</h1>
+        <p>一只银渐层，一只狸花麒麟猫。左边爱吃爱拆，右边黏人腹黑还会开门。</p>
+      </header>
+
+      <section class="controls">
+        <button data-action="feed">喂陛下</button>
+        <button data-action="brush">梳毛试试</button>
+        <button data-action="hug">抱一会儿</button>
+        <button data-action="door">开门</button>
+        <button data-action="hide">捉迷藏</button>
+        <button data-action="computer">趴电脑前</button>
+        <button data-action="fight">打起来</button>
+        <button data-action="rest">都歇会儿</button>
+      </section>
+
+      <section class="profiles">
+        <article class="profile-card" id="profile-bixia">
+          <h2>陛下</h2>
+          <p class="tagline">馋猫 / 破坏王 / 粉色毛绒控</p>
+          <ul></ul>
+        </article>
+        <article class="profile-card" id="profile-tiger">
+          <h2>Tiger</h2>
+          <p class="tagline">黏人 / 短尾 / 会开门</p>
+          <ul></ul>
+        </article>
+      </section>
+
+      <section class="log">
+        <div class="log-title">当前事件</div>
+        <div class="log-line" id="log-line">两只猫正在看着你。</div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

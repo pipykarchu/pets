@@ -2,3 +2,6 @@
 runs/
 *.tmp
 *.log
+__pycache__/
+*.pyc
+garden-gpt-image-2/
