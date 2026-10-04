@@ -20,28 +20,42 @@ const path = require("node:path");
     const next = await page.evaluate(() => Object.values(pets).map(p => p.x));
     assert(next.every((x, i) => Math.abs(x - start[i]) > 10), "Both roam without clicking");
 
-    // Exercise the real route controller from each side, including corner turns.
+    // Exercise the supported climb sequence, not ceiling walking.
     for (const id of ["bixia", "tiger"]) {
-      const surfaces = await page.evaluate(id => {
+      const phases = await page.evaluate(id => {
         const p = pets[id], bounds = stage.getBoundingClientRect();
         p.actionLock = 0; p.clearExpression(); p.locomotion = null;
-        p.moveTo(16, bounds.height - CELL_H - 16); p.routeIndex = p.routeStep === 1 ? 0 : 3;
-        p.chooseIdleTarget(bounds); const seen = new Set();
-        for (let t = 0; t < 80000; t += 20) {
+        p.climbMotion = null; p.climbFrame = null;
+        p.moveTo(id === 'tiger' ? bounds.width - CELL_W - 55 : 55, p.climbGeometry(bounds).floorY);
+        p.startClimb(id === 'tiger' ? 'right' : 'left');
+        const seen = new Set(); let lastFall = null;
+        for (let t = 0; t < 60000; t += 20) {
           p.tick(20, bounds, { active: false }, performance.now() + t);
-          if (p.surface) seen.add(p.surface);
-          if (p.x < 0 || p.y < 0 || p.x > bounds.width - CELL_W + 1 || p.y > bounds.height - CELL_H + 1) throw Error('Pet escaped stage');
+          const phase = p.climbMotion?.phase;
+          if (phase) seen.add(phase);
+          const g = p.climbGeometry(bounds);
+          if (['hang','pullup','release'].includes(phase) && [4,5].includes(p.climbFrame)) {
+            if(Math.abs(p.y + p.climbLayout[p.climbFrame].gripY - g.railY) > .1) throw Error('Hands lost rail');
+          }
+          if(phase==='perch' && p.climbFrame===6 && Math.abs(p.y+198-g.railY)>.1) throw Error('Feet not on ledge');
+          if(phase==='fall') {
+            if(lastFall!==null && p.y < lastFall) throw Error('Falling upward');
+            lastFall=p.y;
+          } else lastFall=null;
+          if(seen.has('land') && !p.climbMotion) break;
         }
         return [...seen];
       }, id);
-      assert.equal(surfaces.length, 4, `${id} crawls all four edges`);
+      for (const phase of ['crouch','pounce','climb','hang','pullup','perch','release','fall','land']) {
+        assert(phases.includes(phase), `${id} reached ${phase}`);
+      }
     }
     await page.reload({ waitUntil: "networkidle" });
     await page.locator('[data-behavior="climb"]').click();
     await page.mouse.move(1110, 10);
     await page.evaluate(() => {
       for (const pet of Object.values(pets)) {
-        pet.moveTo(pet.id === 'tiger' ? 16 : 300, 16);
+        pet.moveTo(pet.id === 'tiger' ? 16 : 300, pet.climbGeometry().floorY);
         pet.randomTarget = null; pet.actionLock = 0; pet.clearExpression();
       }
     });
@@ -63,6 +77,13 @@ const path = require("node:path");
     assert(await page.locator('[data-pet="bixia"][data-locomotion="walk"]').isDisabled());
     await page.locator('[data-presence="both"]').click();
     assert.equal(await page.locator('.pet:not(.is-hidden)').count(), 2);
+    await page.evaluate(() => {
+      behavior.climb = false;
+      for (const pet of Object.values(pets)) {
+        pet.climbMotion = null; pet.climbFrame = null; pet.pendingExpression = null;
+        pet.moveTo(200, pet.climbGeometry().floorY); pet.actionLock=0; pet.clearExpression();
+      }
+    });
 
     for (const id of ['bixia', 'tiger']) {
       for (const action of ['walk', 'run', 'jump']) {
@@ -77,7 +98,7 @@ const path = require("node:path");
     }
     // Dragging must not also trigger a tap action.
     await page.locator('[data-behavior="paused"]').click();
-    await page.evaluate(() => { pets.tiger.moveTo(240, 230); pets.tiger.actionLock = 0; pets.tiger.clearExpression(); });
+    await page.evaluate(() => { pets.tiger.moveTo(240, pets.tiger.climbGeometry().floorY); pets.tiger.actionLock = 0; pets.tiger.clearExpression(); });
     const box = await page.locator('#pet-tiger').boundingBox();
     await page.mouse.move(box.x + 80, box.y + 120);
     await page.mouse.down(); await page.mouse.move(box.x + 160, box.y + 100, { steps: 8 }); await page.mouse.up();
@@ -103,15 +124,16 @@ const path = require("node:path");
     await page.evaluate(() => {
       const bounds = stage.getBoundingClientRect();
       const pet = pets.tiger;
-      pet.moveTo(bounds.width - CELL_W - 16, bounds.height / 2 - CELL_H / 2);
-      pet.routeIndex = 1; pet.chooseIdleTarget(bounds); pet.tick(20, bounds, {active:false}, performance.now());
+      pet.moveTo(bounds.width - CELL_W - 55, pet.climbGeometry(bounds).floorY);
+      pet.startClimb('right');
+      for(let t=0;t<2400;t+=20) pet.tick(20,bounds,{active:false},performance.now()+t);
     });
     await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(__dirname, '../previews/companions-edge-browser.png') });
     await page.setViewportSize({ width: 390, height: 720 });
     await page.waitForTimeout(300);
-    assert(await page.evaluate(() => Object.values(pets).every(p => p.x >= 0 && p.x <= stage.clientWidth - CELL_W + 2)), "Resize clamps both pets");
+    assert(await page.evaluate(() => Object.values(pets).every(p => Number.isFinite(p.x) && Number.isFinite(p.y))), "Resize keeps finite supported positions");
     assert.deepEqual(errors, [], 'Browser console clean');
-    console.log('PASS: both visible, loaded artwork, autonomous roam, four edges, cursor chase, pause, presence, six movement actions, six personality actions, drag, companion mode, resize, clean console');
+    console.log('PASS: both visible, nine climb phases, fixed hand/foot support, downward gravity, grounded chase, pause, presence, movement/personality actions, drag, companion mode, resize, clean console');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

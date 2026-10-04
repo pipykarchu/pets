@@ -14,15 +14,16 @@ Run `python -m http.server 4173 --bind 127.0.0.1` from the repository root and o
 `http://127.0.0.1:4173/`. Both cats appear together by default.
 
 - Tiger follows the cursor eagerly; 陛下 reacts more slowly and pauses to inspect it.
-- With 沿边爬 enabled, they follow all four edges of the demo window, turn corners,
-  and occasionally act out their personalities. Walking cadence follows movement distance.
+- With 沿边爬 enabled, they crouch, pounce onto a side frame, climb with alternating
+  grips, hang from the top rail, pull onto the ledge, then release and fall to a soft landing.
+  Tiger climbs faster; 陛下 takes longer pauses. Cursor chase stays on the ground.
 - Each cat has walk, run, jump and three personality buttons. You can drag them and
   switch between both cats or one cat. Pause, cursor chase and edge crawl have separate controls.
 - 窗口陪伴 hides the profile panel and expands the scene within the browser window.
   This is a browser prototype; it does not create a transparent OS desktop overlay
   or follow the cursor outside the browser.
 
-All browser poses now come from one style-consistent sheet per character. The original
+Browser poses use style-consistent movement and climbing sheets per character. The original
 character references remain under `artwork/cartoon/`; 陛下 uses a slimmer natural torso
 instead of an inflated round belly. The original installable Codex `spritesheet.webp`
 packages are preserved separately from the demo's new motion/expressions.
@@ -31,12 +32,15 @@ Build the current browser assets with Python + Pillow + NumPy:
 
 ```powershell
 python scripts/build_consistent_assets.py
+python scripts/build_climb_assets.py
 ```
 
 The script uses `artwork/bixia-consistent.png` and `artwork/tiger-consistent.png` to build
 `pets/<id>/expressions.webp`, `pets/<id>/locomotion.webp`, contact sheets and animation previews.
 The motion atlas has four walk and four run key poses; each expression strip has eight poses.
 Generation prompts are in `artwork/prompts/consistent-*.txt` and were run through local `tuzi-image`.
+Climbing uses eight dedicated poses in `artwork/<id>-climb.png`; `pets/climb-layout.js`
+records paw contact points so hands stay on the rail and feet rest on the ledge.
 
 For browser QA, install Playwright (`npm install --no-save playwright`), then run:
 

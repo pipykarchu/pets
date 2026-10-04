@@ -478,3 +478,12 @@ body {
 .companion-mode .pet:hover .pet-badge { opacity: 1; }
 .is-paused .pet-sprite, .is-paused .pet-visual { animation-play-state: paused !important; }
 .pet { touch-action: none; user-select: none; }
+.climb-frame { position: absolute; inset: var(--rail-y, 160px) 24px 24px; border-left: 5px solid #bac6d6; border-right: 5px solid #bac6d6; border-bottom: 4px solid #bac6d6; border-radius: 3px; pointer-events: none; opacity: 0.8; }
+.climb-frame::before, .climb-frame::after { content: ""; position: absolute; top: 12px; bottom: 0; width: 7px; background: repeating-linear-gradient(to bottom, #899bb3 0 3px, transparent 3px 28px); }
+.climb-frame::before { left: -6px; }
+.climb-frame::after { right: -6px; }
+.climb-frame__rail { position: absolute; top: -4px; left: -5px; right: -5px; height: 8px; background: linear-gradient(#dfe6f0, #91a4bd); border-radius: 3px; box-shadow: 0 3px 6px #64748b25; }
+.pet.climbing .pet-sprite { animation: none !important; }
+.pet.climbing .pet-visual { transform-origin: 50% 18px; transition: none; }
+.pet[data-climb-phase="land"] .pet-sprite { transform: scaleY(0.94); transform-origin: 50% 198px; }
+.pet[data-climb-phase="ground"] .pet-sprite { transform: none; }

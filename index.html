@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>陛下和 Tiger 桌宠</title>
-  <link rel="stylesheet" href="./styles.css?v=companions-1" />
+  <link rel="stylesheet" href="./styles.css?v=gravity-1" />
 </head>
 <body>
   <main class="app-shell">
@@ -15,6 +15,7 @@
         <button type="button" data-behavior="paused" aria-pressed="false">暂停</button>
         <button type="button" id="companion-mode" aria-pressed="false">窗口陪伴</button>
       </nav>
+      <div class="climb-frame" aria-hidden="true"><div class="climb-frame__rail"></div></div>
       <div class="desktop-prop desktop-prop--desk"></div>
       <div class="desktop-prop desktop-prop--food"></div>
       <div class="desktop-prop desktop-prop--door"></div>
@@ -36,7 +37,7 @@
         <div class="pet-badge"><strong>Tiger</strong><span class="pet-mood"></span></div>
         <div class="pet-bubble"></div>
       </div>
-      <div class="stage-hint" id="stage-hint">两只一起陪你 · Tiger 黏人追鼠标，陛下慢半拍 · 没事时沿窗口边缘探险</div>
+      <div class="stage-hint" id="stage-hint">扑向边框 → 抓爪上爬 → 悬挂 → 撑上窗沿 → 松爪落地</div>
     </section>
 
     <aside class="panel">
@@ -101,6 +102,7 @@
     </aside>
   </main>
 
-  <script src="./app.js?v=companions-1"></script>
+  <script src="./pets/climb-layout.js?v=gravity-1"></script>
+  <script src="./app.js?v=gravity-1"></script>
 </body>
 </html>

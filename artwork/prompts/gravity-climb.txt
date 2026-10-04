@@ -1,0 +1,17 @@
+Create a production sprite sheet of the EXACT SAME SINGLE CAT in the reference image, preserving face, eye color, fur markings, head/body proportions and soft painted illustration style. One character only in every cell. White silver cat remains blue-eyed and slim; brown tabby remains green-eyed with a SHORT bobtail. Never change the character or inflate its belly. This sheet depicts real climbing biomechanics, NOT a sideways walking cat rotated, and NOT an upside-down cat walking on a ceiling.
+
+Exact FOUR COLUMNS by TWO ROWS grid with 8 complete full-body poses. Plain pure #00FF00 background, generous green gutters. No text, no lines, no frame borders, no background, NO window or furniture drawn. Invisible support surfaces only; paws are positioned to grip the virtual support drawn later by the app. Entire head, paws and tail inside each cell. Consistent body size and artist across cells. 1536x1024.
+
+ROW 1, left to right:
+1. Side view facing RIGHT, hindlegs folded deeply into a crouch, forepaws planted, back lowered, ready to spring upward toward a vertical window frame.
+2. Side view facing RIGHT, airborne upward pounce: body diagonally elongated, both front paws reaching up and right, hindlegs trailing downward. Paws reach, torso follows, no sitting posture.
+3. Side view facing RIGHT, body upright vertically against an invisible wall to the RIGHT: upper forepaw reaching ABOVE head to grip, lower forepaw near cheek gripping, hind paws bent and braced against wall under the body. Weight supported by hands and pushing hind paws. All four paws extend RIGHT toward wall, never a standing human pose.
+4. Side view facing RIGHT, next climbing step: opposite forepaw reaches ABOVE head, other forepaw firmly grips near head, hindlegs extend to push body up. Clearly different bent/extended limbs from pose 3. The cat pulls itself UP, not walking sideways.
+
+ROW 2, left to right:
+5. FRONT view, TWO FOREPAWS next to each other at the very TOP gripping an invisible horizontal rail ABOVE THE HEAD. Arms extend upward, head below hands, body and hindlegs hang DOWN under gravity, toes downward. This is a hanging cat, never upside-down, never seated. Forepaw contact points at top of drawing, stable anchor.
+6. FRONT or three-quarter view, pulling itself over the top rail: bent elbows, BOTH FOREPAWS firmly planted around mid-height at CHEST level, head and shoulders ABOVE paw contact points, belly and hindlegs still hanging BELOW. Visible straining pull-up, chest slimmer than head, no obese body. Rail itself NOT drawn.
+7. Side view facing RIGHT, crouched safely ON TOP of an invisible horizontal ledge: ALL FOUR PAWS on SAME baseline at bottom, torso compact but not fat, ready to stand/walk. Weight now rests on paws, not dangling.
+8. Side view facing RIGHT, LANDING pose: forepaws and hindpaws spread and planted on same floor baseline, elbows and knees bent to absorb weight, back low, head balanced, no floating or shadow.
+
+The visual story is spring -> grip -> climb -> hang downward -> pull shoulders above rail -> four paws supported -> land. Every pose must be anatomically readable as a real cat action.

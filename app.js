@@ -26,6 +26,7 @@ const PETS = {
     atlas: "pets/bixia/spritesheet.webp",
     expressions: "pets/bixia/expressions.webp?v=consistent-1",
     locomotion: "pets/bixia/locomotion.webp?v=consistent-1",
+    climbing: "pets/bixia/climbing.webp?v=gravity-1",
     spawn: [0.14, 0.54],
     defaultMood: "装无辜",
     expressionFrames: {
@@ -51,6 +52,7 @@ const PETS = {
     atlas: "pets/tiger/spritesheet.webp",
     expressions: "pets/tiger/expressions.webp?v=consistent-1",
     locomotion: "pets/tiger/locomotion.webp?v=consistent-1",
+    climbing: "pets/tiger/climbing.webp?v=gravity-1",
     spawn: [0.62, 0.55],
     defaultMood: "人坐姿",
     expressionFrames: {
@@ -78,6 +80,7 @@ class PetActor {
   constructor(id, config, root) {
     this.id = id;
     this.config = config;
+    this.climbLayout = CLIMB_LAYOUT[id];
     this.root = root;
     this.el = root.querySelector(`#pet-${id}`);
     this.visual = this.el.querySelector(".pet-visual");
@@ -104,6 +107,10 @@ class PetActor {
     this.routeIndex = id === "tiger" ? 0 : 3;
     this.routeStep = id === "tiger" ? 1 : -1;
     this.surface = "bottom";
+    this.climbMotion = null;
+    this.climbFrame = null;
+    this.climbCooldown = 0;
+    this.swing = 0;
     this.cornerPause = 0;
     this.cursorRestUntil = 0;
     this.previousCursorActive = false;
@@ -116,6 +123,8 @@ class PetActor {
     this.expressionAtlas.src = config.expressions;
     this.locomotionAtlas = new Image();
     this.locomotionAtlas.src = config.locomotion;
+    this.climbAtlas = new Image();
+    this.climbAtlas.src = config.climbing;
     this.setSpeech("");
     this.setMood(config.defaultMood);
     this.bindPointerEvents();
@@ -139,6 +148,9 @@ class PetActor {
       this.surface = null;
       this.randomTarget = null;
       this.locomotion = null;
+      this.climbMotion = null;
+      this.climbFrame = null;
+      this.swing = 0;
       this.hop = 0;
       this.clearExpression();
       this.setState("running");
@@ -159,7 +171,9 @@ class PetActor {
       this.dragging = false;
       this.setState("idle");
       this.setSpeech("");
-      if (event.type === "pointerup" && !this.dragMoved && this.tapHandler) this.tapHandler(this);
+      if (this.dragMoved) {
+        this.beginDrop();
+      } else if (event.type === "pointerup" && this.tapHandler) this.tapHandler(this);
     };
     this.el.addEventListener("pointerup", finishDrag);
     this.el.addEventListener("pointercancel", finishDrag);
@@ -176,6 +190,10 @@ class PetActor {
   setHidden(hidden) {
     this.locomotion = null;
     this.hop = 0;
+    this.climbMotion = null;
+    this.climbFrame = null;
+    this.swing = 0;
+    this.pendingExpression = null;
     this.hidden = hidden;
     this.velocity = { x: 0, y: 0 };
     this.surface = null;
@@ -195,7 +213,9 @@ class PetActor {
   clampPosition() {
     const stage = this.root.getBoundingClientRect();
     this.x = Math.max(0, Math.min(Math.max(0, stage.width - CELL_W), this.x));
-    this.y = Math.max(0, Math.min(Math.max(0, stage.height - CELL_H), this.y));
+    // A perched cat's transparent cell extends above the rail; its artwork stays visible.
+    const minY = this.climbMotion ? Math.min(0, this.climbGeometry(stage).perchY) : 0;
+    this.y = Math.max(minY, Math.min(Math.max(0, stage.height - CELL_H), this.y));
   }
 
   moveTo(x, y) {
@@ -253,6 +273,11 @@ class PetActor {
   }
 
   playExpression(sequence, keyOrSpeech, options = {}) {
+    if (this.climbMotion) {
+      this.pendingExpression = { sequence, keyOrSpeech, options };
+      this.beginDrop();
+      return;
+    }
     const frames = sequence.map((name) => this.config.expressionFrames[name]);
     if (frames.some((frame) => frame === undefined)) {
       throw new Error(`Unknown ${this.id} expression in ${sequence.join(", ")}`);
@@ -324,26 +349,158 @@ class PetActor {
   }
 
   chooseIdleTarget(stage) {
-    const maxX = Math.max(16, stage.width - CELL_W - 16);
-    const maxY = Math.max(16, stage.height - CELL_H - 16);
-    if (!behavior.climb) {
-      this.surface = null;
-      this.randomTarget = { x: this.x < maxX / 2 ? maxX : 16, y: this.y };
+    if (this.climbMotion) return;
+    const geometry = this.climbGeometry(stage);
+    this.surface = "bottom";
+    const side = this.direction > 0 ? "right" : "left";
+    const wallX = side === "right" ? geometry.rightX : geometry.leftX;
+    // Approach on the floor; stop short so the pounce has visible horizontal travel.
+    const x = behavior.climb && geometry.canClimb ? wallX + (side === "right" ? -42 : 42) : wallX;
+    this.randomTarget = { x, y: geometry.floorY, edge: side };
+  }
+
+  climbGeometry(stage = this.root.getBoundingClientRect()) {
+    const railY = Math.min(160, Math.max(108, stage.height - 320));
+    const floorY = Math.max(0, stage.height - CELL_H - 16);
+    const hangY = railY - this.climbLayout[4].gripY;
+    return { railY, floorY, hangY, perchY: railY - 198,
+      leftX: 12, rightX: Math.max(12, stage.width - CELL_W - 12),
+      canClimb: floorY - hangY > 96 && stage.width > CELL_W + 110 };
+  }
+
+  startClimb(side) {
+    const g = this.climbGeometry();
+    if (!g.canClimb || this.hidden || this.dragging || this.climbMotion) return;
+    this.clearExpression(false);
+    this.locomotion = null;
+    this.actionLock = 0;
+    this.randomTarget = null;
+    this.velocity = { x: 0, y: 0 };
+    this.hop = 0;
+    this.direction = side === "right" ? 1 : -1;
+    this.surface = side;
+    this.climbMotion = { phase: "crouch", elapsed: 0, side, startX: this.x, startY: g.floorY, stepStartY: g.floorY - 68, step: 0 };
+    this.y = g.floorY;
+    this.climbFrame = 0;
+    this.setMood("蹲下蓄力");
+    this.setSpeech(this.id === "tiger" ? "先抓稳，再上去。" : "朕先试试这个边框。", 1800);
+  }
+
+  beginDrop() {
+    const g = this.climbGeometry();
+    if (this.y >= g.floorY - 1 && !this.climbMotion) {
+      this.y = g.floorY;
       return;
     }
-    const corners = [
-      { x: maxX, y: maxY }, { x: maxX, y: 16 },
-      { x: 16, y: 16 }, { x: 16, y: maxY },
-    ];
-    const edge = (this.routeIndex + (this.routeStep === -1 ? 1 : 0)) % 4;
-    this.randomTarget = { ...corners[this.routeIndex], edge: ["bottom", "right", "top", "left"][edge] };
-    // After dragging/chasing, rejoin the edge first before crawling along it.
-    const target = this.randomTarget;
-    if (target.edge === "bottom" || target.edge === "top") {
-      this.surface = Math.abs(this.y - target.y) < 8 ? target.edge : null;
-    } else {
-      this.surface = Math.abs(this.x - target.x) < 8 ? target.edge : null;
+    if (this.climbMotion?.phase === "fall" || this.climbMotion?.phase === "land") return;
+    this.locomotion = null;
+    this.actionLock = 0;
+    this.clearExpression(false);
+    this.randomTarget = null;
+    this.climbMotion = { phase: "fall", elapsed: 0, side: this.direction > 0 ? "right" : "left",
+      fallVelocity: 0, startY: this.y };
+    this.climbFrame = 1;
+    this.surface = null;
+    this.swing = 0;
+    this.hop = 0;
+    this.setMood("松爪落下");
+  }
+
+  tickClimb(dt, stage, pointer) {
+    const m = this.climbMotion;
+    const g = this.climbGeometry(stage);
+    const wallX = m.side === "right" ? g.rightX : g.leftX;
+    const gripWall = frame => {
+      const pawX = this.climbLayout[frame].sideX;
+      const edgeX = m.side === "right" ? stage.width - 24 : 24;
+      return edgeX - (m.side === "right" ? pawX : CELL_W - pawX);
+    };
+    const duration = this.id === "tiger" ? 480 : 680;
+    const change = phase => { m.phase = phase; m.elapsed = 0; };
+    m.elapsed += dt;
+    if ((!behavior.climb || !g.canClimb) && m.phase !== "fall" && m.phase !== "land") {
+      this.beginDrop(); this.render(); return;
     }
+    if (m.phase === "crouch") {
+      this.climbFrame = 0;
+      if (m.elapsed >= (this.id === "tiger" ? 350 : 550)) change("pounce");
+    } else if (m.phase === "pounce") {
+      this.climbFrame = 1;
+      const t = Math.min(0.48, m.elapsed / 1000);
+      // A ballistic leap: gravity slows the rise, then the paws catch the frame.
+      this.x = m.startX + (gripWall(2) - m.startX) * t / 0.48;
+      this.y = g.floorY - 405 * t + 550 * t * t;
+      this.setMood("扑向边框");
+      if (t === 0.48) {
+        this.x = gripWall(2); this.y = g.floorY - 68;
+        m.stepStartY = this.y; change("climb");
+      }
+    } else if (m.phase === "climb") {
+      const progress = Math.min(1, m.elapsed / duration);
+      // A new paw grip precedes each pull. Hind paws push in the second half.
+      const pull = Math.max(0, Math.min(1, (progress - 0.3) / 0.7));
+      const eased = pull * pull * (3 - 2 * pull);
+      this.climbFrame = progress < 0.3 ? 2 : 3;
+      this.x = gripWall(this.climbFrame);
+      this.y = Math.max(g.hangY, m.stepStartY - eased * 28);
+      this.setMood(progress < 0.3 ? "前爪换抓点" : "后腿蹬、前爪拉");
+      if (progress === 1) {
+        m.stepStartY = this.y; m.step++; m.elapsed = 0;
+        if (this.y <= g.hangY + 0.1) change("hang");
+      }
+    } else if (m.phase === "hang") {
+      this.climbFrame = 4;
+      this.x = wallX; this.y = g.hangY;
+      this.swing = Math.sin(m.elapsed / 260) * 3 * Math.exp(-m.elapsed / 2200);
+      this.setMood("双爪抓住，身体垂下");
+      if (m.elapsed >= (this.id === "tiger" ? 1500 : 2400)) {
+        this.swing = 0; change("pullup");
+      }
+    } else if (m.phase === "pullup") {
+      const p = Math.min(1, m.elapsed / (this.id === "tiger" ? 900 : 1400));
+      this.climbFrame = p < 0.35 ? 4 : 5;
+      // Both hand poses share the fixed rail; the torso rises around the grip.
+      this.y = g.railY - this.climbLayout[this.climbFrame].gripY;
+      this.setMood("前爪撑住，后腿收上来");
+      if (p === 1) change("perch");
+    } else if (m.phase === "perch") {
+      this.climbFrame = 6;
+      this.y = g.perchY;
+      this.setMood(this.id === "tiger" ? "爬上窗沿，坐稳了" : "站稳，先歇一会儿");
+      if (m.elapsed >= (this.id === "tiger" ? 1800 : 2800)) {
+        change("release");
+      }
+    } else if (m.phase === "release") {
+      // Lower back over the ledge with both paws still supporting the body.
+      const p = Math.min(1, m.elapsed / 650);
+      this.climbFrame = p < 0.65 ? 5 : 4;
+      this.y = g.railY - this.climbLayout[this.climbFrame].gripY;
+      this.setMood("抓着窗沿，慢慢放下身体");
+      if (p === 1) this.beginDrop();
+    } else if (m.phase === "fall") {
+      this.climbFrame = 1;
+      this.swing = 0;
+      m.fallVelocity += 1100 * dt / 1000;
+      this.y = Math.min(g.floorY, this.y + m.fallVelocity * dt / 1000);
+      this.setMood("松爪，向下落");
+      if (this.y >= g.floorY) { this.climbFrame = 7; change("land"); }
+    } else if (m.phase === "land") {
+      this.climbFrame = 7;
+      this.y = g.floorY;
+      this.setMood("四脚落地，屈腿缓冲");
+      if (m.elapsed >= 380) {
+        this.climbMotion = null; this.climbFrame = null; this.surface = "bottom";
+        this.direction = m.side === "right" ? -1 : 1;
+        this.climbCooldown = performance.now() + 12000;
+        this.idleClock = 0; this.setState("idle", true);
+        const queued = this.pendingExpression;
+        this.pendingExpression = null;
+        if (queued) this.playExpression(queued.sequence, queued.keyOrSpeech, queued.options);
+        else this.chooseIdleTarget(stage);
+      }
+    }
+    this.el.dataset.climbPhase = this.climbMotion?.phase || "ground";
+    this.render();
   }
 
   detectEdge(stage, target) {
@@ -366,7 +523,7 @@ class PetActor {
   }
 
   advanceFrame(dt) {
-    if (this.expressionFrame !== null || this.hidden || behavior.paused) return;
+    if (this.expressionFrame !== null || this.hidden || behavior.paused || this.climbMotion) return;
     if (!this.locomotion && (this.state === "walking" || this.state === "running")) return;
     const timings = TIMINGS[this.state] || TIMINGS.idle;
     this.frameClock += dt * (this.id === "tiger" ? 1.15 : 1);
@@ -379,6 +536,10 @@ class PetActor {
   tick(dt, stage, pointer, now) {
     if (this.hidden) return;
     if (behavior.paused) { this.render(); return; }
+    if (this.dragging) { this.render(); return; }
+    if (this.climbMotion) { this.tickClimb(dt, stage, pointer); return; }
+    const floor = this.climbGeometry(stage).floorY;
+    if (this.y < floor - 1) { this.beginDrop(); this.tickClimb(dt, stage, pointer); return; }
     if (this.locomotion && !this.dragging) {
       const motion = this.locomotion;
       motion.elapsed = Math.min(motion.duration, motion.elapsed + dt);
@@ -429,10 +590,9 @@ class PetActor {
       if (now < this.cursorRestUntil) { this.render(); return; }
       this.surface = null;
       const sideOffset = this.id === "bixia" ? -52 : 52;
-      const verticalOffset = this.id === "bixia" ? -124 : -106;
       const target = {
         x: pointer.x - CELL_W / 2 + sideOffset,
-        y: pointer.y + verticalOffset,
+        y: floor,
       };
       this.randomTarget = null;
       this.chasingCursor = true;
@@ -451,13 +611,18 @@ class PetActor {
       }
       if (now < this.cornerPause) { this.render(); return; }
       const target = this.randomTarget;
-      if (target.edge && ((target.edge === "top" || target.edge === "bottom") ? Math.abs(this.y - target.y) < 5 : Math.abs(this.x - target.x) < 5)) this.surface = target.edge;
-      this.setMood(this.surface ? (this.id === "tiger" ? "沿窗框探险" : "沿边找零食") : "散步中");
+      this.surface = "bottom";
+      this.setMood(this.id === "tiger" ? "去窗边探险" : "沿边找零食");
       const reached = this.followTarget(target.x, target.y, this.id === "tiger" ? 102 : 78, dt);
       if (reached) {
         this.randomTarget = null;
         this.idleClock = 0;
-        this.routeIndex = (this.routeIndex + this.routeStep + 4) % 4;
+        if (behavior.climb && now >= this.climbCooldown && this.climbGeometry(stage).canClimb) {
+          this.startClimb(target.edge);
+          this.render();
+          return;
+        }
+        this.direction *= -1;
         this.cornerPause = now + (this.id === "tiger" ? 350 : 850);
         this.setState("idle", true);
         if (target.edge && Math.random() < 0.25) {
@@ -484,10 +649,16 @@ class PetActor {
 
   render() {
     this.el.style.transform = `translate3d(${Math.round(this.x)}px, ${Math.round(this.y - this.hop)}px, 0)`;
-    const angle = { bottom: 0, right: -90, top: 180, left: 90 }[this.surface] || 0;
-    const surfaceFacing = this.surface && (this.state === "walking" || this.state === "idle") ? this.routeStep : this.direction;
-    this.visual.style.setProperty("--facing", this.expressionFrame === null ? surfaceFacing : 1);
-    this.visual.style.setProperty("--surface-angle", `${this.expressionFrame === null ? angle : 0}deg`);
+    this.visual.style.setProperty("--facing", this.expressionFrame === null ? this.direction : 1);
+    this.visual.style.setProperty("--surface-angle", `${this.swing}deg`);
+    if (this.climbFrame !== null) {
+      this.sprite.style.backgroundImage = `url('${this.config.climbing}')`;
+      this.sprite.style.backgroundPosition = `${-this.climbFrame * CELL_W}px 0px`;
+      this.sprite.style.backgroundSize = `${CELL_W * 8}px ${CELL_H}px`;
+      this.el.classList.add("climbing");
+      return;
+    }
+    this.el.classList.remove("climbing");
     if (this.expressionFrame !== null) {
       this.sprite.style.backgroundImage = `url('${this.config.expressions}')`;
       this.sprite.style.backgroundPosition = `${-(this.expressionFrame * CELL_W)}px 0px`;
@@ -510,6 +681,7 @@ class PetActor {
 
   startLocomotion(kind) {
     if (this.hidden || this.dragging) return;
+    if (this.climbMotion) { this.beginDrop(); return; }
     this.clearExpression(false);
     this.hop = 0;
     this.randomTarget = null;
@@ -528,6 +700,11 @@ class PetActor {
 
 const stage = document.getElementById("stage");
 const behavior = { chase: true, climb: true, paused: false };
+function syncClimbFrame() {
+  const geometry = pets.tiger.climbGeometry();
+  stage.style.setProperty("--rail-y", `${geometry.railY}px`);
+  stage.querySelector(".climb-frame").style.display = behavior.climb ? "" : "none";
+}
 const logLine = document.getElementById("log-line");
 const cursorBeacon = document.getElementById("cursor-beacon");
 const pointer = { active: false, x: 0, y: 0, lastMove: 0 };
@@ -617,6 +794,7 @@ for (const button of document.querySelectorAll("[data-behavior]")) {
     pointer.active = false;
     cursorBeacon.classList.remove("is-active");
     if (key === "climb") {
+      syncClimbFrame();
       for (const pet of Object.values(pets)) {
         pet.surface = null;
         pet.velocity = { x: 0, y: 0 };
@@ -632,6 +810,7 @@ document.getElementById("companion-mode").addEventListener("click", (event) => {
   event.currentTarget.textContent = enabled ? "展开档案" : "窗口陪伴";
   pointer.active = false;
   requestAnimationFrame(() => {
+    syncClimbFrame();
     for (const pet of Object.values(pets)) {
       pet.clampPosition();
       pet.chooseIdleTarget(stage.getBoundingClientRect());
@@ -812,6 +991,7 @@ let nextEncounterAt = 0;
 function handleEncounter(now) {
   if (behavior.paused || pointer.active) return;
   if (Object.values(pets).some((pet) => pet.surface && pet.surface !== "bottom")) return;
+  if (Object.values(pets).some((pet) => pet.climbMotion)) return;
   if (now < nextEncounterAt) return;
   if (pets.bixia.hidden || pets.tiger.hidden || pets.bixia.dragging || pets.tiger.dragging) return;
   if (pets.bixia.actionLock > 0 || pets.tiger.actionLock > 0) return;
@@ -845,6 +1025,7 @@ function loop(now) {
 }
 
 window.addEventListener("resize", () => {
+  syncClimbFrame();
   for (const pet of Object.values(pets)) {
     pet.clampPosition();
     if (pet.randomTarget) pet.chooseIdleTarget(stage.getBoundingClientRect());
@@ -856,5 +1037,6 @@ for (const pet of Object.values(pets)) {
   pet.moveTo(pet.x, Math.max(16, stage.getBoundingClientRect().height - CELL_H - 16));
   pet.chooseIdleTarget(stage.getBoundingClientRect());
 }
-log("两只正在散步：四脚交替迈步，鼠标移进来就会跑着追。");
+syncClimbFrame();
+log("两只先在底部散步，走到窗边会蓄力扑上去；松爪后会落回地面。");
 requestAnimationFrame(loop);
