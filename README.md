@@ -10,9 +10,50 @@ Codex custom pet assets and a tiny local desk-pet demo.
 
 ## Local Demo
 
-Open `index.html` in a browser for a draggable two-cat desk-pet scene.
+Run `python -m http.server 4173 --bind 127.0.0.1` from the repository root and open
+`http://127.0.0.1:4173/`. Both cats appear together by default.
+
+- Tiger follows the cursor eagerly; 陛下 reacts more slowly and pauses to inspect it.
+- With 沿边爬 enabled, they follow all four edges of the demo window, turn corners,
+  and occasionally act out their personalities. Walking cadence follows movement distance.
+- Each cat has walk, run, jump and three personality buttons. You can drag them and
+  switch between both cats or one cat. Pause, cursor chase and edge crawl have separate controls.
+- 窗口陪伴 hides the profile panel and expands the scene within the browser window.
+  This is a browser prototype; it does not create a transparent OS desktop overlay
+  or follow the cursor outside the browser.
+
+All browser poses now come from one style-consistent sheet per character. The original
+character references remain under `artwork/cartoon/`; 陛下 uses a slimmer natural torso
+instead of an inflated round belly. The original installable Codex `spritesheet.webp`
+packages are preserved separately from the demo's new motion/expressions.
+
+Build the current browser assets with Python + Pillow + NumPy:
+
+```powershell
+python scripts/build_consistent_assets.py
+```
+
+The script uses `artwork/bixia-consistent.png` and `artwork/tiger-consistent.png` to build
+`pets/<id>/expressions.webp`, `pets/<id>/locomotion.webp`, contact sheets and animation previews.
+The motion atlas has four walk and four run key poses; each expression strip has eight poses.
+Generation prompts are in `artwork/prompts/consistent-*.txt` and were run through local `tuzi-image`.
+
+For browser QA, install Playwright (`npm install --no-save playwright`), then run:
+
+```powershell
+node --check app.js
+node scripts/browser_qa.cjs
+```
+
+The test uses an isolated headless browser against the running local server. Optional
+`PET_DEMO_URL` and `PET_BROWSER_PATH` select the server and installed browser executable.
+It checks two-pet presence, all edges, cursor chase, movement/personality controls,
+pause, dragging without accidental taps, companion mode, resizing and console errors.
 
 ## Regenerate
+
+The following older builder regenerates the original installable Codex pet packages,
+not the browser's current character sheets.
 
 From the repo root:
 

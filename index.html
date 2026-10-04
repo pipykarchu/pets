@@ -4,45 +4,65 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>陛下和 Tiger 桌宠</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=companions-1" />
 </head>
 <body>
   <main class="app-shell">
     <section class="stage" id="stage">
+      <nav class="behavior-toolbar" aria-label="陪伴设置">
+        <button type="button" data-behavior="chase" aria-pressed="true">追鼠标</button>
+        <button type="button" data-behavior="climb" aria-pressed="true">沿边爬</button>
+        <button type="button" data-behavior="paused" aria-pressed="false">暂停</button>
+        <button type="button" id="companion-mode" aria-pressed="false">窗口陪伴</button>
+      </nav>
       <div class="desktop-prop desktop-prop--desk"></div>
       <div class="desktop-prop desktop-prop--food"></div>
       <div class="desktop-prop desktop-prop--door"></div>
       <div class="desktop-prop desktop-prop--laptop"></div>
+      <div class="cursor-beacon" id="cursor-beacon" aria-hidden="true"></div>
       <div class="pet pet--bixia" id="pet-bixia" aria-label="陛下">
-        <div class="pet-sprite"></div>
-        <div class="pet-tail"></div>
-        <div class="pet-badge">陛下</div>
+        <div class="pet-visual">
+          <div class="pet-sprite"></div>
+          <div class="pet-tail"></div>
+        </div>
+        <div class="pet-badge"><strong>陛下</strong><span class="pet-mood"></span></div>
         <div class="pet-bubble"></div>
       </div>
       <div class="pet pet--tiger" id="pet-tiger" aria-label="Tiger">
-        <div class="pet-sprite"></div>
-        <div class="pet-tail"></div>
-        <div class="pet-badge">Tiger</div>
+        <div class="pet-visual">
+          <div class="pet-sprite"></div>
+          <div class="pet-tail"></div>
+        </div>
+        <div class="pet-badge"><strong>Tiger</strong><span class="pet-mood"></span></div>
         <div class="pet-bubble"></div>
       </div>
-      <div class="stage-hint" id="stage-hint">拖一拖，点一下按钮，看看两只猫会怎么演。</div>
+      <div class="stage-hint" id="stage-hint">两只一起陪你 · Tiger 黏人追鼠标，陛下慢半拍 · 没事时沿窗口边缘探险</div>
     </section>
 
     <aside class="panel">
       <header class="panel-header">
         <h1>陛下 / Tiger 档案</h1>
-        <p>一只银渐层，一只狸花麒麟猫。左边爱吃爱拆，右边黏人腹黑还会开门。</p>
+        <p>一只银渐层，一只狸花麒麟猫。神态、动作和小心思各不相同。</p>
       </header>
 
+      <section class="presence-toggle" aria-label="桌宠显示方式">
+        <button type="button" data-presence="both" aria-pressed="true">两只一起</button>
+        <button type="button" data-presence="bixia" aria-pressed="false">只看陛下</button>
+        <button type="button" data-presence="tiger" aria-pressed="false">只看 Tiger</button>
+      </section>
+
       <section class="controls">
-        <button data-action="feed">喂陛下</button>
-        <button data-action="brush">梳毛试试</button>
-        <button data-action="hug">抱一会儿</button>
-        <button data-action="door">开门</button>
-        <button data-action="hide">捉迷藏</button>
-        <button data-action="computer">趴电脑前</button>
-        <button data-action="fight">打起来</button>
-        <button data-action="rest">都歇会儿</button>
+        <button type="button" data-action="feed"><span aria-hidden="true">🍗</span> 抢吃的</button>
+        <button type="button" data-action="plush"><span aria-hidden="true">🩷</span> 粉色毛绒</button>
+        <button type="button" data-action="brush"><span aria-hidden="true">🪮</span> 梳毛试试</button>
+        <button type="button" data-action="hug"><span aria-hidden="true">🫳</span> 抱一会儿</button>
+        <button type="button" data-action="door"><span aria-hidden="true">🚪</span> Tiger 开门</button>
+        <button type="button" data-action="hide"><span aria-hidden="true">🙈</span> 捉迷藏</button>
+        <button type="button" data-action="computer"><span aria-hidden="true">💻</span> 霸占电脑</button>
+        <button type="button" data-action="lick"><span aria-hidden="true">👅</span> 舔陛下</button>
+        <button type="button" data-action="lock"><span aria-hidden="true">🔒</span> 关洗手间</button>
+        <button type="button" data-action="fight"><span aria-hidden="true">💥</span> 打起来</button>
+        <button type="button" data-action="rest"><span aria-hidden="true">💤</span> 都歇会儿</button>
       </section>
 
       <section class="profiles">
@@ -50,11 +70,27 @@
           <h2>陛下</h2>
           <p class="tagline">馋猫 / 破坏王 / 粉色毛绒控</p>
           <ul></ul>
+          <div class="signature-actions" aria-label="陛下的招牌动作">
+            <button type="button" data-pet="bixia" data-locomotion="walk">走一走</button>
+            <button type="button" data-pet="bixia" data-locomotion="run">跑起来</button>
+            <button type="button" data-pet="bixia" data-locomotion="jump">跳一下</button>
+            <button type="button" data-pet="bixia" data-signature="0">偷偷吃两口</button>
+            <button type="button" data-pet="bixia" data-signature="1">扑粉色毛绒</button>
+            <button type="button" data-pet="bixia" data-signature="2">拒绝梳毛</button>
+          </div>
         </article>
         <article class="profile-card" id="profile-tiger">
           <h2>Tiger</h2>
           <p class="tagline">黏人 / 短尾 / 会开门</p>
           <ul></ul>
+          <div class="signature-actions" aria-label="Tiger 的招牌动作">
+            <button type="button" data-pet="tiger" data-locomotion="walk">走一走</button>
+            <button type="button" data-pet="tiger" data-locomotion="run">跑起来</button>
+            <button type="button" data-pet="tiger" data-locomotion="jump">跳一下</button>
+            <button type="button" data-pet="tiger" data-signature="0">像人一样坐</button>
+            <button type="button" data-pet="tiger" data-signature="1">蹭蹭求抱抱</button>
+            <button type="button" data-pet="tiger" data-signature="2">探头研究门</button>
+          </div>
         </article>
       </section>
 
@@ -65,6 +101,6 @@
     </aside>
   </main>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=companions-1"></script>
 </body>
 </html>
